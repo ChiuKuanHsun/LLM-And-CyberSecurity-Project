@@ -54,7 +54,9 @@
   function extractText(el) {
     if (!el) return "";
     const clone = el.cloneNode(true);
-    clone.querySelectorAll("script, style, noscript, img, svg").forEach(n => n.remove());
+    // 連同我們自己注入的 .pd-overlay 一起剔除，
+    // 否則對外層容器二次掃描時會把警告文字也算進 hash，造成重複渲染。
+    clone.querySelectorAll("script, style, noscript, img, svg, .pd-overlay").forEach(n => n.remove());
     const text = clone.innerText || clone.textContent || "";
     return text.replace(/\s+/g, " ").trim().slice(0, 5000);
   }
@@ -78,14 +80,26 @@
       document.querySelectorAll(sel).forEach(el => elements.push(el));
     }
 
+    // 同一次掃描內的文本去重：避免多個 selector 撈到「同一封信件的不同層級節點」
+    // 而導致同封郵件出現兩個 Overlay。
+    const seenInThisScan = new Set();
+
     for (const el of elements) {
       // 此 DOM 節點已渲染過 Overlay → 同一節點不重複渲染
       if (el.dataset.pdMarked === "1") continue;
+      // 任一祖先已標記過 → 該封信件已由內層子節點處理，跳過外層
+      if (el.parentElement?.closest('[data-pd-marked="1"]')) continue;
+      // 任一後代已標記過 → 該封信件已由內層子節點處理，跳過外層
+      if (el.querySelector('[data-pd-marked="1"]')) continue;
 
       const text = extractText(el);
       if (text.length < 20) continue; // 太短，沒分析價值
 
       const key = hashString(text);
+
+      // 同次掃描已處理過此文本 → 跳過（不同 selector 撈到同信件）
+      if (seenInThisScan.has(key)) continue;
+      seenInThisScan.add(key);
 
       // 命中前端快取：同樣文字內容（可能是不同 DOM 節點，如重新開啟的信件）
       // → 直接用快取結果重播 Overlay，不再送後端
