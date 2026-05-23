@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phishing Detector — 設定</title>
+  <style>
+    body {
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 24px;
+      font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      color: #222;
+    }
+    h1 { font-size: 20px; }
+    h2 { font-size: 15px; margin-top: 28px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+    .field { margin: 14px 0; }
+    label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+    input[type=text], input[type=url] {
+      width: 100%; padding: 8px; box-sizing: border-box;
+      border: 1px solid #dadce0; border-radius: 4px; font-size: 13px;
+    }
+    .radio-group label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; cursor: pointer; }
+    button {
+      padding: 8px 16px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    button.secondary { background: #5f6368; }
+    button.danger    { background: #d93025; }
+    button:hover { opacity: 0.9; }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    .saved { color: #137333; margin-left: 12px; font-size: 13px; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+    .row > button { flex: 0 0 auto; }
+
+    /* 自訂網站清單 */
+    .site-list { list-style: none; padding: 0; margin: 12px 0 0; }
+    .site-list li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; background: #f8f9fa; border-radius: 4px;
+      margin-bottom: 6px; font-size: 13px;
+    }
+    .site-list .site-pattern { font-family: ui-monospace, monospace; color: #1a73e8; }
+    .site-list .site-label { color: #555; flex: 1; }
+    .site-list .remove-btn {
+      background: transparent; color: #d93025; padding: 4px 8px;
+      border: 1px solid #d93025; border-radius: 4px;
+    }
+    .site-list .remove-btn:hover { background: #fce8e6; }
+    .empty { color: #999; font-size: 13px; padding: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>🛡 Phishing Detector — 設定</h1>
+
+  <!-- ============ LLM Engine ============ -->
+  <h2>LLM 引擎模式</h2>
+  <div class="field radio-group">
+    <label><input type="radio" name="mode" value="local" checked /> 🟢 企業級本地防護（推薦）</label>
+    <label><input type="radio" name="mode" value="cloud" /> 🔴 雲端 API 模式</label>
+    <p class="hint">本地模式資料 100% 留存在本機，零外洩風險。</p>
+  </div>
+
+  <h2>API 端點</h2>
+  <div class="field">
+    <label for="endpoint">分析端點</label>
+    <input type="url" id="endpoint" placeholder="http://127.0.0.1:8080/analyze" />
+    <p class="hint">預設為本機 FastAPI 中繼站。連接 Colab 時改成 ngrok 網址即可。</p>
+  </div>
+
+  <div class="field">
+    <button id="save">儲存</button>
+    <button id="test" class="secondary">測試連線</button>
+    <span id="saved-msg" class="saved" hidden>已儲存 ✓</span>
+  </div>
+
+  <!-- ============ 自訂掃描網站 ============ -->
+  <h2>📌 自訂掃描網站</h2>
+  <p class="hint">
+    新增任意 webmail 或社群網站到此清單。授權後，擴充功能會在這些網站自動掃描可疑訊息。
+    例如：<code>https://outlook.live.com</code>、<code>https://mail.yahoo.com</code>
+  </p>
+
+  <div class="field">
+    <label for="new-site">網址（會自動展開為 origin pattern）</label>
+    <div class="row">
+      <input type="url" id="new-site" placeholder="https://outlook.live.com" />
+      <input type="text" id="new-label" placeholder="顯示名稱（選填）" style="flex: 0 0 180px;" />
+      <button id="add-site">＋ 新增</button>
+    </div>
+    <p class="hint">點「新增」後，Chrome 會跳出授權彈窗，請點「允許」即可生效（無需重載）。</p>
+  </div>
+
+  <ul id="site-list" class="site-list">
+    <li class="empty">尚未新增任何自訂網站。</li>
+  </ul>
+
+  <!-- ============ 關於 ============ -->
+  <h2>關於</h2>
+  <p class="hint">
+    Intent-Based Phishing Detector — LLM 意圖分析防釣魚擴充功能 PoC<br />
+    課程：LLM Applications in Cybersecurity
+  </p>
+
+  <script src="options.js"></script>
+</body>
+</html>

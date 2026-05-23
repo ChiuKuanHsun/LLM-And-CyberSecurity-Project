@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "Intent-Based Phishing Detector",
+  "version": "0.1.0",
+  "description": "以 LLM 意圖分析偵測武器化文本的防釣魚擴充功能（PoC）",
+
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "http://127.0.0.1:8080/*",
+    "https://mail.google.com/*",
+    "https://*.facebook.com/*",
+    "https://*.line.me/*"
+  ],
+
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://*.facebook.com/*",
+        "https://*.line.me/*"
+      ],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Phishing Detector",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "options_page": "options/options.html",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,62 @@
+/*
+ * Warning Overlay 樣式
+ * 設計原則：
+ *   1. 用色彩語意傳達風險（紅=High、橘=Medium）
+ *   2. 不全螢幕遮蔽（避免警報疲勞）
+ *   3. 提供關閉按鈕，使用者可自主忽略
+ */
+
+.pd-overlay {
+  font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: pd-slide-in 0.3s ease-out;
+}
+
+@keyframes pd-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pd-overlay .pd-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.pd-overlay .pd-banner strong { flex: 1; font-weight: 600; }
+.pd-overlay .pd-icon { font-size: 18px; }
+
+.pd-overlay .pd-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+}
+.pd-overlay .pd-close:hover { background: rgba(255, 255, 255, 0.35); }
+
+.pd-overlay .pd-body {
+  padding: 12px 14px;
+  background: #fff;
+  color: #222;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.pd-overlay .pd-explain  { margin: 0 0 6px; font-weight: 500; }
+.pd-overlay .pd-intents  { margin: 0 0 4px; color: #555; }
+.pd-overlay .pd-meta     { margin: 0; color: #999; font-size: 11px; }
+
+/* 風險等級配色 */
+.pd-risk-high   .pd-banner { background: #d93025; }      /* 紅 */
+.pd-risk-medium .pd-banner { background: #f29900; }      /* 橘 */
+.pd-risk-low    .pd-banner { background: #1a73e8; }      /* 藍（資訊） */
