@@ -57,9 +57,23 @@
 .pd-overlay .pd-meta     { margin: 0; color: #999; font-size: 11px; }
 
 /* 風險等級配色 */
-.pd-risk-high   .pd-banner { background: #d93025; }      /* 紅 */
-.pd-risk-medium .pd-banner { background: #f29900; }      /* 橘 */
-.pd-risk-low    .pd-banner { background: #1a73e8; }      /* 藍（資訊） */
+.pd-risk-high   .pd-banner { background: #d93025; }      /* 紅：高風險 */
+.pd-risk-medium .pd-banner { background: #f29900; }      /* 橘：中風險 */
+.pd-risk-low    .pd-banner { background: #1a73e8; }      /* 藍：（保留）資訊 */
+.pd-risk-safe   .pd-banner { background: #137333; }      /* 綠：分析後判定安全 */
+
+/* Safe badge 精簡樣式：單行 banner、移除展開區的視覺包袱 */
+.pd-overlay.pd-risk-safe {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.pd-overlay.pd-risk-safe .pd-banner {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.pd-overlay.pd-risk-safe .pd-icon {
+  font-weight: bold;
+  font-size: 14px;
+}
 
 /* ----- Loading 骨架（送出請求時立即注入，消除無聲等待） ----- */
 .pd-overlay.pd-loading .pd-banner {

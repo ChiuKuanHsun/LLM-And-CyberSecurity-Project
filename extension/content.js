@@ -238,28 +238,44 @@
   }
 
   // ---------------------------------------------------------------
-  // 4. 警告 Overlay 渲染
+  // 4. 結果 Overlay 渲染
+  //    - 釣魚（High/Medium）→ 紅/橘 警告（含解釋與意圖列表）
+  //    - 安全（Low / not phishing）→ 綠色精簡 badge（單行）
+  //    讓使用者明確知道「系統已分析」，避免疑慮（Visibility of System Status）
   // ---------------------------------------------------------------
   function handleResult(el, result) {
-    if (!result.is_phishing) return;
-    if (result.risk_level === "Low") return;
     if (el.dataset.pdMarked === "1") return;
     el.dataset.pdMarked = "1";
 
+    const isSafe = !result.is_phishing || result.risk_level === "Low";
     const overlay = document.createElement("div");
-    overlay.className = `pd-overlay pd-risk-${result.risk_level.toLowerCase()}`;
-    overlay.innerHTML = `
-      <div class="pd-banner">
-        <span class="pd-icon">⚠️</span>
-        <strong>偵測到可疑釣魚訊息 — 風險：${result.risk_level}</strong>
-        <button class="pd-close" aria-label="關閉警告">✕</button>
-      </div>
-      <div class="pd-body">
-        <p class="pd-explain">${escapeHtml(result.explanation)}</p>
-        <p class="pd-intents">攻擊意圖：${result.detected_intents.join("、")}</p>
-        <p class="pd-meta">後端延遲 ${result.latency_ms}ms · 引擎 ${escapeHtml(result.engine)}</p>
-      </div>
-    `;
+
+    if (isSafe) {
+      overlay.className = "pd-overlay pd-risk-safe";
+      overlay.innerHTML = `
+        <div class="pd-banner">
+          <span class="pd-icon">✓</span>
+          <strong>意圖分析：未偵測到釣魚跡象</strong>
+          <span class="pd-meta-inline">${escapeHtml(result.engine)} · ${result.latency_ms}ms</span>
+          <button class="pd-close" aria-label="關閉">✕</button>
+        </div>
+      `;
+    } else {
+      overlay.className = `pd-overlay pd-risk-${result.risk_level.toLowerCase()}`;
+      overlay.innerHTML = `
+        <div class="pd-banner">
+          <span class="pd-icon">⚠️</span>
+          <strong>偵測到可疑釣魚訊息 — 風險：${result.risk_level}</strong>
+          <button class="pd-close" aria-label="關閉警告">✕</button>
+        </div>
+        <div class="pd-body">
+          <p class="pd-explain">${escapeHtml(result.explanation)}</p>
+          <p class="pd-intents">攻擊意圖：${result.detected_intents.join("、")}</p>
+          <p class="pd-meta">後端延遲 ${result.latency_ms}ms · 引擎 ${escapeHtml(result.engine)}</p>
+        </div>
+      `;
+    }
+
     overlay.querySelector(".pd-close").addEventListener("click", () => overlay.remove());
 
     // 放在被偵測元素「之前」，不破壞原本網頁布局
