@@ -5,7 +5,7 @@
   <title>Phishing Detector</title>
   <style>
     body {
-      width: 280px;
+      width: 300px;
       margin: 0;
       padding: 14px;
       font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
@@ -13,18 +13,35 @@
       color: #222;
     }
     h1 { margin: 0 0 8px; font-size: 15px; }
+    h2 { font-size: 12px; color: #5f6368; text-transform: uppercase; margin: 14px 0 6px; letter-spacing: 0.5px; }
     .status { padding: 8px; border-radius: 6px; margin: 8px 0; }
     .status.ok    { background: #e6f4ea; color: #137333; }
     .status.fail  { background: #fce8e6; color: #c5221f; }
-    .row { display: flex; justify-content: space-between; margin: 6px 0; }
+    .row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 12px; }
     .row .label { color: #666; }
+    .row .value { color: #222; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button {
-      width: 100%; padding: 8px; margin-top: 8px;
+      width: 100%; padding: 8px; margin-top: 6px;
       background: #1a73e8; color: #fff; border: none; border-radius: 4px;
       cursor: pointer; font-size: 13px;
     }
-    button:hover { background: #1765cc; }
-    a { color: #1a73e8; text-decoration: none; }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: #5f6368; }
+    button.green { background: #137333; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+
+    .current-site {
+      background: #f8f9fa; padding: 8px; border-radius: 4px;
+      font-family: ui-monospace, monospace; font-size: 11px;
+      color: #1a73e8; word-break: break-all; margin-bottom: 4px;
+    }
+    .badge {
+      display: inline-block; padding: 2px 6px; border-radius: 10px;
+      font-size: 10px; font-weight: 600;
+    }
+    .badge.registered { background: #e6f4ea; color: #137333; }
+    .badge.not-registered { background: #fef7e0; color: #b06000; }
+    .hint { font-size: 11px; color: #888; margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -32,11 +49,17 @@
 
   <div id="status" class="status">檢查後端連線中…</div>
 
-  <div class="row"><span class="label">端點</span><span id="endpoint">—</span></div>
-  <div class="row"><span class="label">引擎</span><span id="engine">mock-keyword-v1</span></div>
+  <div class="row"><span class="label">端點</span><span id="endpoint" class="value">—</span></div>
+  <div class="row"><span class="label">引擎</span><span id="engine" class="value">—</span></div>
 
-  <button id="ping">重新測試連線</button>
-  <button id="open-options" style="background:#5f6368;">⚙ 設定</button>
+  <h2>當前網站</h2>
+  <div id="current-site" class="current-site">—</div>
+  <div id="current-status" class="hint">—</div>
+  <button id="add-current" class="green" hidden>＋ 將此網站加入掃描清單</button>
+
+  <h2>動作</h2>
+  <button id="ping" class="secondary">重新測試連線</button>
+  <button id="open-options" class="secondary">⚙ 開啟完整設定</button>
 
   <script src="popup.js"></script>
 </body>

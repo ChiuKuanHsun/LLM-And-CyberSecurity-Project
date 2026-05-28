@@ -20,6 +20,19 @@
       border: 1px solid #dadce0; border-radius: 4px; font-size: 13px;
     }
     .radio-group label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; cursor: pointer; }
+    .radio-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 4px;
+      cursor: pointer; transition: background 0.15s;
+      font-size: 13px;
+    }
+    .radio-row:hover { background: #f8f9fa; }
+    .radio-row > span:nth-child(2) { flex: 1; }
+    .engine-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: #e6f4ea; color: #137333;
+    }
+    .engine-tag.cloud { background: #fef7e0; color: #b06000; }
     button {
       padding: 8px 16px; background: #1a73e8; color: #fff;
       border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
@@ -54,11 +67,29 @@
   <h1>🛡 Phishing Detector — 設定</h1>
 
   <!-- ============ LLM Engine ============ -->
-  <h2>LLM 引擎模式</h2>
-  <div class="field radio-group">
-    <label><input type="radio" name="mode" value="local" checked /> 🟢 企業級本地防護（推薦）</label>
-    <label><input type="radio" name="mode" value="cloud" /> 🔴 雲端 API 模式</label>
-    <p class="hint">本地模式資料 100% 留存在本機，零外洩風險。</p>
+  <h2>LLM 引擎</h2>
+  <div class="field">
+    <label class="radio-row">
+      <input type="radio" name="engine" value="ollama" checked />
+      <span>🟢 <strong>Ollama 本地</strong>（推薦）</span>
+      <span class="engine-tag">資料零外洩</span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="engine" value="gemini" />
+      <span>☁️ <strong>Gemini</strong>（Google）</span>
+      <span class="engine-tag cloud">雲端</span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="engine" value="nvidia" />
+      <span>☁️ <strong>NVIDIA NIM</strong>（Llama-3.1-8B）</span>
+      <span class="engine-tag cloud">雲端</span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="engine" value="mock" />
+      <span>🟡 <strong>Mock</strong>（離線測試用，關鍵字比對）</span>
+      <span class="engine-tag">無 LLM</span>
+    </label>
+    <p class="hint">本地模式資料 100% 留存在本機，零外洩風險。雲端模式較快但文本會傳至第三方。</p>
   </div>
 
   <h2>API 端點</h2>

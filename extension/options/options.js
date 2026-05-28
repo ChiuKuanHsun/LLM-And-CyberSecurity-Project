@@ -11,7 +11,7 @@
 
 const DEFAULTS = {
   apiEndpoint: "http://127.0.0.1:8080/analyze",
-  mode: "local",
+  engine: "ollama",   // 預設本地，呼應「企業級本地防護」原則
 };
 
 const DYNAMIC_SCRIPT_PREFIX = "user_site_";
@@ -40,13 +40,14 @@ async function saveCustomSites(sites) {
 async function loadEndpoint() {
   const cfg = await chrome.storage.sync.get(DEFAULTS);
   document.getElementById("endpoint").value = cfg.apiEndpoint;
-  document.querySelector(`input[name="mode"][value="${cfg.mode}"]`).checked = true;
+  const radio = document.querySelector(`input[name="engine"][value="${cfg.engine}"]`);
+  if (radio) radio.checked = true;
 }
 
 async function saveEndpoint() {
   const endpoint = document.getElementById("endpoint").value.trim() || DEFAULTS.apiEndpoint;
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  await chrome.storage.sync.set({ apiEndpoint: endpoint, mode });
+  const engine = document.querySelector('input[name="engine"]:checked')?.value || DEFAULTS.engine;
+  await chrome.storage.sync.set({ apiEndpoint: endpoint, engine });
 
   const msg = document.getElementById("saved-msg");
   msg.hidden = false;

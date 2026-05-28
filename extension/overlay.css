@@ -60,3 +60,26 @@
 .pd-risk-high   .pd-banner { background: #d93025; }      /* 紅 */
 .pd-risk-medium .pd-banner { background: #f29900; }      /* 橘 */
 .pd-risk-low    .pd-banner { background: #1a73e8; }      /* 藍（資訊） */
+
+/* ----- Loading 骨架（送出請求時立即注入，消除無聲等待） ----- */
+.pd-overlay.pd-loading .pd-banner {
+  background: #5f6368;
+  font-weight: 500;
+}
+.pd-overlay.pd-loading .pd-meta-inline {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-left: 8px;
+}
+.pd-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pd-spin 0.8s linear infinite;
+}
+@keyframes pd-spin {
+  to { transform: rotate(360deg); }
+}

@@ -16,19 +16,22 @@ const DEFAULT_ENDPOINT = "http://127.0.0.1:8080/analyze";
 
 // ---------------- LLM Endpoint ----------------
 
-async function getEndpoint() {
-  const { apiEndpoint } = await chrome.storage.sync.get("apiEndpoint");
-  return apiEndpoint || DEFAULT_ENDPOINT;
+async function getConfig() {
+  const cfg = await chrome.storage.sync.get(["apiEndpoint", "engine"]);
+  return {
+    endpoint: cfg.apiEndpoint || DEFAULT_ENDPOINT,
+    engine: cfg.engine || "ollama",   // 預設本地 Ollama，呼應「企業級本地防護」原則
+  };
 }
 
 async function analyzeText({ text, source_url }) {
-  const endpoint = await getEndpoint();
+  const { endpoint, engine } = await getConfig();
   const t0 = performance.now();
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, source_url, lang: "zh-TW" }),
+      body: JSON.stringify({ text, source_url, lang: "zh-TW", engine }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -184,8 +187,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
 
     case "PING_BACKEND":
-      getEndpoint()
-        .then((ep) => fetch(ep.replace("/analyze", "/health")))
+      getConfig()
+        .then(({ endpoint }) => fetch(endpoint.replace("/analyze", "/health")))
         .then((r) => sendResponse({ ok: r.ok }))
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true;

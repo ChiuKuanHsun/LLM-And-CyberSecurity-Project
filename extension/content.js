@@ -17,6 +17,10 @@
   // 能直接「重播」既有結果重新渲染 Overlay，
   // 避免「關閉信件再開啟後警告消失」的 bug。
   const analyzedResults = new Map();
+  // 正在送後端分析中的 text hash —— 防止 MutationObserver
+  // 因為我們插入 loading overlay 而觸發新一輪 scan，
+  // 在第一次 await 還沒結束時就再插一個 loading（分身 bug）。
+  const inFlightHashes = new Set();
   let analyzeTimer = null;
 
   // ---------------------------------------------------------------
@@ -25,7 +29,6 @@
   const SITE_SELECTORS = {
     "mail.google.com": [
       "div.a3s.aiL",            // Gmail 信件本文容器
-      "div[role='listitem'] .ii.gt",
     ],
     "facebook.com": [
       "div[role='article']",
@@ -37,12 +40,46 @@
     ],
   };
 
+  // 未知網站的 fallback：通用語意標籤 + 常見 webmail/社群模式
+  // 設計理念：寧可多抓再用 looksLikeContent 過濾，也不要漏抓
+  const FALLBACK_SELECTORS = [
+    "article",
+    "main",
+    "[role='article']",
+    "[role='main']",
+    "[role='listitem']",
+    "[class*='message-body']",
+    "[class*='email-body']",
+    "[class*='mail-body']",
+    "[class*='msg-body']",
+    "[class*='post-content']",
+    "[id*='msg-']",
+  ];
+
   function pickSelectors() {
     const host = location.hostname;
     for (const key in SITE_SELECTORS) {
-      if (host.includes(key)) return SITE_SELECTORS[key];
+      if (host.includes(key)) return { selectors: SITE_SELECTORS[key], useHeuristic: false };
     }
-    return null;
+    return { selectors: FALLBACK_SELECTORS, useHeuristic: true };
+  }
+
+  /**
+   * 內容密度啟發式：判斷一個元素是否「像」訊息／信件內容，
+   * 而不是導覽列、廣告、版權標。
+   *  1. 長度 >= 30 字（過濾按鈕、標題列）
+   *  2. 連結文字佔比 < 70%（過濾選單列）
+   *  3. 不在明顯雜訊容器內（footer/nav/aside/header）
+   */
+  function looksLikeContent(el) {
+    if (!el) return false;
+    if (el.closest("nav, header, footer, aside")) return false;
+    const text = (el.innerText || "").trim();
+    if (text.length < 30) return false;
+    const linkText = Array.from(el.querySelectorAll("a"))
+      .map(a => (a.innerText || "")).join("").length;
+    if (linkText / text.length > 0.7) return false;
+    return true;
   }
 
   /**
@@ -68,23 +105,58 @@
     return h.toString(36);
   }
 
+  /**
+   * 前端粗篩：在送後端前先過濾掉明顯不需要分析的內容，
+   * 節省每次 5-6 秒的 LLM 推理成本。
+   *
+   * 過濾規則（依誤判率由低到高）：
+   *  1. 文本太短（< 20 字）
+   *  2. 純 ASCII / 英數標點（多半是 URL、ID、英文 UI 字串）
+   *     —— 本系統設計針對繁中釣魚，含中文才有意義
+   *  3. 元素隱形（display:none / visibility:hidden / 0×0 尺寸）
+   *  4. 連結文字佔比 > 70%（明顯選單列；已於 fallback 走過一次，這裡再保險）
+   */
+  function shouldSkip(el, text) {
+    if (text.length < 20) return "too_short";
+
+    // 純 ASCII 且無中文 → 多為 URL / ID / 英文 nav
+    if (!/[一-鿿]/.test(text)) return "no_cjk";
+
+    // 元素隱形（getBoundingClientRect 0 或 display:none）
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return "invisible";
+
+    // 連結密度（雖然 fallback 已過濾，這裡對主站也加一層保險）
+    const linkText = Array.from(el.querySelectorAll("a"))
+      .map(a => (a.innerText || "")).join("").length;
+    if (text.length > 0 && linkText / text.length > 0.7) return "link_heavy";
+
+    return null;
+  }
+
   // ---------------------------------------------------------------
   // 2. 掃描 + 送分析
   // ---------------------------------------------------------------
   async function scanAndAnalyze() {
-    const selectors = pickSelectors();
+    const { selectors, useHeuristic } = pickSelectors();
     if (!selectors) return;
 
     const elements = [];
     for (const sel of selectors) {
-      document.querySelectorAll(sel).forEach(el => elements.push(el));
+      try {
+        document.querySelectorAll(sel).forEach(el => elements.push(el));
+      } catch (e) {
+        console.warn("[Phishing Detector] invalid selector:", sel, e);
+      }
     }
+    // 未知網站走 fallback：再用啟發式過一次，避免抓到一堆雜訊
+    const filtered = useHeuristic ? elements.filter(looksLikeContent) : elements;
 
     // 同一次掃描內的文本去重：避免多個 selector 撈到「同一封信件的不同層級節點」
     // 而導致同封郵件出現兩個 Overlay。
     const seenInThisScan = new Set();
 
-    for (const el of elements) {
+    for (const el of filtered) {
       // 此 DOM 節點已渲染過 Overlay → 同一節點不重複渲染
       if (el.dataset.pdMarked === "1") continue;
       // 任一祖先已標記過 → 該封信件已由內層子節點處理，跳過外層
@@ -93,7 +165,13 @@
       if (el.querySelector('[data-pd-marked="1"]')) continue;
 
       const text = extractText(el);
-      if (text.length < 20) continue; // 太短，沒分析價值
+
+      // 前端粗篩：先濾掉明顯不需分析的內容
+      const skipReason = shouldSkip(el, text);
+      if (skipReason) {
+        // 不印 log，避免 console 暴衝；報告中只需引用 §粗篩規則
+        continue;
+      }
 
       const key = hashString(text);
 
@@ -108,6 +186,17 @@
         continue;
       }
 
+      // 此文本已在 in-flight：MutationObserver 因我們插入 loading 而觸發
+      // 重掃時不要再送一次後端、也不要再插 loading（分身 bug）
+      if (inFlightHashes.has(key)) continue;
+      if (el.dataset.pdInFlight === "1") continue;
+
+      inFlightHashes.add(key);
+      el.dataset.pdInFlight = "1";
+
+      // 立即注入 loading 骨架，讓使用者知道「正在分析」，避免無聲等待
+      const loadingOverlay = renderLoadingOverlay(el);
+
       try {
         const resp = await chrome.runtime.sendMessage({
           type: "ANALYZE_TEXT",
@@ -115,16 +204,41 @@
         });
         if (resp?.ok && resp.data) {
           analyzedResults.set(key, resp.data);
+          loadingOverlay?.remove();
           handleResult(el, resp.data);
+        } else {
+          loadingOverlay?.remove();
         }
       } catch (e) {
         console.warn("[Phishing Detector] send message failed:", e);
+        loadingOverlay?.remove();
+      } finally {
+        inFlightHashes.delete(key);
+        delete el.dataset.pdInFlight;
       }
     }
   }
 
   // ---------------------------------------------------------------
-  // 3. 警告 Overlay 渲染
+  // 3. Loading 骨架渲染（送出請求時立即顯示，消除無聲等待）
+  // ---------------------------------------------------------------
+  function renderLoadingOverlay(el) {
+    if (!el?.parentNode) return null;
+    const overlay = document.createElement("div");
+    overlay.className = "pd-overlay pd-loading";
+    overlay.innerHTML = `
+      <div class="pd-banner">
+        <span class="pd-spinner" aria-hidden="true"></span>
+        <strong>意圖分析中…</strong>
+        <span class="pd-meta-inline">LLM 推理約需 3-6 秒</span>
+      </div>
+    `;
+    el.parentNode.insertBefore(overlay, el);
+    return overlay;
+  }
+
+  // ---------------------------------------------------------------
+  // 4. 警告 Overlay 渲染
   // ---------------------------------------------------------------
   function handleResult(el, result) {
     if (!result.is_phishing) return;
