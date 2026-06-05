@@ -382,7 +382,7 @@ ollama pull hf.co/BuddyLu/phishing-qwen-gguf
 - **Google AI Studio / NVIDIA NIM** 提供免費 API 額度
 
 ### 授權
-本專案為大學課程期末作業，僅供學術用途。MIT License 詳見 [LICENSE](LICENSE)（若有）。
+本專案為大學課程期末作業，僅供學術用途。
 
 ### 相關研究
 本系統的設計呼應以下文獻與課程內容：
