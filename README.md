@@ -15,7 +15,6 @@
 | --- | --- |
 | 🎥 **操作演示影片** | [YouTube — TODO: 貼上連結](https://youtube.com/watch?v=TODO) |
 | 🤗 **微調模型 (GGUF)** | [BuddyLu/phishing-qwen-gguf on Hugging Face](https://huggingface.co/BuddyLu/phishing-qwen-gguf/tree/main) |
-| 📄 **期末整合報告 (LaTeX)** | [`report/final/main.tex`](report/final/main.tex) |
 | 📋 **三層輸入規格** | [`INPUT_SPEC.md`](INPUT_SPEC.md) |
 | ☁️ **Colab 雲端 GPU 部署指南** | [`colab/README.md`](colab/README.md) |
 
