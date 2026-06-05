@@ -21,7 +21,7 @@
 把以下兩個檔案上傳到 Google Drive 的 `MyDrive/llm_phishing/`：
 
 - `Qwen2.5-7B-Instruct.Q4_K_M.gguf`（4.6GB）
-- `Modelfile`（你專案根目錄那份）
+- `Modelfile`
 
 > 💡 上傳 .gguf 走 Google Drive 桌面同步 App 最穩，網頁直傳容易斷線
 
