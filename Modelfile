@@ -1,0 +1,45 @@
+# Ollama Modelfile — Intent-Based Phishing Detector
+# 基底：B 微調後的 Qwen2.5-7B（已合併 LoRA + 量化為 Q4_K_M）
+#
+# 建立模型： ollama create phishing-detector -f Modelfile
+# 測試：     ollama run phishing-detector "<text>您的帳戶將於兩小時內凍結，請立即驗證</text>"
+#
+# 注意：SYSTEM 區塊必須與 INPUT_SPEC.md §2.1 一致，且與 B 訓練時相同（避免 Train/Serve Skew）。
+
+FROM ./Qwen2.5-7B-Instruct.Q4_K_M.gguf
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>
+"""
+
+# 分類任務要低溫度求穩定，避免模型自由發揮
+PARAMETER temperature 0.1
+PARAMETER top_p 0.9
+PARAMETER num_ctx 4096
+PARAMETER stop "<|im_end|>"
+
+SYSTEM """你是一個進階的 SOC 資安意圖分析引擎。請分析使用者輸入的網頁／信件文本，找出潛藏的社交工程攻擊意圖。
+
+【判斷邏輯】
+不要只依賴網址特徵。請深層分析文本是否包含「製造急迫感」、「冒充權威」、「誘騙提供財務或登入資訊」、「貪婪誘惑」等社交工程意圖。
+
+【意圖標籤定義】
+- Urgency：製造時間壓力（如「24 小時內」「立即」「凍結」「逾期」）
+- Authority：冒充權威或品牌（銀行、政府機關、知名電商、客服）
+- Financial：要求金錢動作（匯款、購買點數、驗證信用卡）
+- Greed：以誘惑利益吸引點擊（中獎、免費領取、紅包）
+- None：未偵測到上述任一意圖
+
+【風險等級規則】
+- High：偵測到 ≥2 種意圖，或單一意圖+明顯詐騙特徵
+- Medium：僅 1 種意圖、需謹慎判斷
+- Low：未發現明顯意圖
+
+【輸出格式】
+必須且只能輸出純 JSON，欄位順序固定為：
+{"is_phishing": boolean, "risk_level": "High"|"Medium"|"Low", "detected_intents": ["Urgency"|"Authority"|"Financial"|"Greed"|"None"], "explanation": "<繁體中文白話解釋，<= 50 字>"}
+不可附加 markdown 程式碼框、不可有額外說明文字。"""

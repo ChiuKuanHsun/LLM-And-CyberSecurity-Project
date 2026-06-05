@@ -85,6 +85,21 @@
 \vspace{-0.7cm}
 
 % =================================================================
+% 專案資源連結 —— 放在標題下方顯眼處
+% =================================================================
+\begin{center}
+\fbox{\parbox{0.95\textwidth}{
+  \centering \small
+  \textbf{📦 專案資源 (Project Resources)} \\[3pt]
+  \begin{tabular}{rl}
+    🐙 GitHub Repo: & \url{https://github.com/YOUR_USERNAME/intent-phishing-detector} \\
+    🎥 操作演示影片: & \url{https://youtube.com/watch?v=TODO_VIDEO_ID} \\
+    🤗 微調模型 (GGUF): & \url{https://huggingface.co/BuddyLu/phishing-qwen-gguf} \\
+  \end{tabular}
+}}
+\end{center}
+
+% =================================================================
 % ABSTRACT — 三人共同維護
 % =================================================================
 \begin{abstract}
@@ -532,6 +547,36 @@ ML 系統最常見的失誤是 train/serve skew——訓練時模型看到的輸
   \item \textbf{Prompt injection 高階變體}：當前 \texttt{<text>} 包裹僅能擋天真攻擊；對抗性 prompt injection 仍需更深防護（如 input filter 或 prompt firewall）\cite{liu2024promptinjection}。
   \item \textbf{LLM 幻覺與過度信任}：使用者可能因綠色 ✓ badge 誤信「絕對安全」，反而降低警覺。未來可在 UI 加上「✓ 不代表絕對安全，請仍保持戒心」提示。
 \end{enumerate}
+
+% =================================================================
+% \section{可重現性} — 三人共同
+% =================================================================
+\section{可重現性 (Reproducibility)}\label{sec:repro}
+
+為支持評分教師與後續研究者重現本系統的所有實驗，我們公開全部交付物：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{完整原始碼}：\url{https://github.com/YOUR_USERNAME/intent-phishing-detector}
+  \begin{itemize}
+    \item Chrome Extension (MV3) 完整實作
+    \item FastAPI 後端與四引擎抽象層 (\texttt{llm\_engine.py})
+    \item Ollama \texttt{Modelfile} 與 \texttt{INPUT\_SPEC.md} 跨團隊契約
+    \item Colab 雲端 GPU 部署 notebook 步驟
+    \item 三份個人進度報告與本期末報告 LaTeX 原始碼
+  \end{itemize}
+  \item \textbf{微調模型 (GGUF) 公開託管}：\url{https://huggingface.co/BuddyLu/phishing-qwen-gguf} \\
+        可直接以 \texttt{ollama pull hf.co/BuddyLu/phishing-qwen-gguf} 拉取，無需任何前處理
+  \item \textbf{操作演示影片}：\url{https://youtube.com/watch?v=TODO_VIDEO_ID} \\
+        端到端示範安裝、四引擎切換、釣魚 / 正常信件兩種 Overlay、自訂網站等核心流程
+  \item \textbf{一鍵啟動指令}（README.md 第一段）：
+\begin{verbatim}
+git clone <repo>; cd Project
+python -m venv .venv && pip install -r backend/requirements.txt
+ollama pull hf.co/BuddyLu/phishing-qwen-gguf
+ollama create phishing-detector -f Modelfile
+uvicorn main:app --port 8080 --reload
+\end{verbatim}
+\end{itemize}
 
 % =================================================================
 % \section{結論} — 三人共同
