@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -33,11 +33,12 @@ app = FastAPI(
 
 # Chrome Extension 來源不固定（chrome-extension://<id>），開發階段先全開
 # Week 16 報告需討論：正式部署應改為 chrome-extension://<發布後的固定ID>
+# 注意：expose_headers 讓前端可以讀回我們自訂的 header（目前沒回，但留接口）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Gemini-Api-Key", "X-Nvidia-Api-Key"],
 )
 
 
@@ -111,7 +112,13 @@ def health() -> dict[str, str]:
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+async def analyze(
+    req: AnalyzeRequest,
+    # 前端 Options 頁可在這兩個 header 傳入 API key，覆寫後端環境變數
+    # 設計理由：避免使用者每次 uvicorn 重啟都要重設 $env:GEMINI_API_KEY
+    x_gemini_api_key: str | None = Header(default=None, alias="X-Gemini-Api-Key"),
+    x_nvidia_api_key: str | None = Header(default=None, alias="X-Nvidia-Api-Key"),
+) -> AnalyzeResponse:
     start = time.perf_counter()
     engine = (req.engine or llm_engine.DEFAULT_ENGINE).lower()
     key = _cache_key(req.text, engine)
@@ -126,7 +133,13 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             result = _mock_analyze(req.text)
             engine_label = "mock-keyword-v1"
         else:
-            result, engine_label = await llm_engine.analyze_with_engine(req.text, engine)
+            key_overrides = {
+                "gemini": x_gemini_api_key,
+                "nvidia": x_nvidia_api_key,
+            }
+            result, engine_label = await llm_engine.analyze_with_engine(
+                req.text, engine, key_overrides=key_overrides,
+            )
     except Exception as e:
         logger.exception("analyze failed (engine=%s)", engine)
         # 降級：LLM 掛掉時退回 mock，確保前端永遠有結果（附註引擎來源）

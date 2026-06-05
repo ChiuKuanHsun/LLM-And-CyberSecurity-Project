@@ -18,19 +18,28 @@ const DEFAULT_ENDPOINT = "http://127.0.0.1:8080/analyze";
 
 async function getConfig() {
   const cfg = await chrome.storage.sync.get(["apiEndpoint", "engine"]);
+  // API keys 從 storage.local 讀（不會同步到 Google 帳號）
+  const keys = await chrome.storage.local.get(["geminiApiKey", "nvidiaApiKey"]);
   return {
     endpoint: cfg.apiEndpoint || DEFAULT_ENDPOINT,
     engine: cfg.engine || "ollama",   // 預設本地 Ollama，呼應「企業級本地防護」原則
+    geminiKey: keys.geminiApiKey || "",
+    nvidiaKey: keys.nvidiaApiKey || "",
   };
 }
 
 async function analyzeText({ text, source_url }) {
-  const { endpoint, engine } = await getConfig();
+  const { endpoint, engine, geminiKey, nvidiaKey } = await getConfig();
   const t0 = performance.now();
+  // 只在需要的引擎時帶 key header，避免無謂洩漏
+  const headers = { "Content-Type": "application/json" };
+  if (engine === "gemini" && geminiKey) headers["X-Gemini-Api-Key"] = geminiKey;
+  if (engine === "nvidia" && nvidiaKey) headers["X-Nvidia-Api-Key"] = nvidiaKey;
+
   try {
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ text, source_url, lang: "zh-TW", engine }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -42,6 +42,11 @@ async function loadEndpoint() {
   document.getElementById("endpoint").value = cfg.apiEndpoint;
   const radio = document.querySelector(`input[name="engine"][value="${cfg.engine}"]`);
   if (radio) radio.checked = true;
+
+  // API keys 走 storage.local（不會同步到 Google 帳號）
+  const keys = await chrome.storage.local.get(["geminiApiKey", "nvidiaApiKey"]);
+  document.getElementById("gemini-key").value = keys.geminiApiKey || "";
+  document.getElementById("nvidia-key").value = keys.nvidiaApiKey || "";
 }
 
 async function saveEndpoint() {
@@ -49,9 +54,37 @@ async function saveEndpoint() {
   const engine = document.querySelector('input[name="engine"]:checked')?.value || DEFAULTS.engine;
   await chrome.storage.sync.set({ apiEndpoint: endpoint, engine });
 
+  // API keys 分開存到 .local（不同步）
+  const geminiKey = document.getElementById("gemini-key").value.trim();
+  const nvidiaKey = document.getElementById("nvidia-key").value.trim();
+  await chrome.storage.local.set({
+    geminiApiKey: geminiKey,
+    nvidiaApiKey: nvidiaKey,
+  });
+
   const msg = document.getElementById("saved-msg");
   msg.hidden = false;
   setTimeout(() => (msg.hidden = true), 1500);
+}
+
+async function clearKeys() {
+  if (!confirm("確定要清除已儲存的 API Keys？\n清除後雲端引擎將回到使用環境變數 (若有設)。")) return;
+  await chrome.storage.local.remove(["geminiApiKey", "nvidiaApiKey"]);
+  document.getElementById("gemini-key").value = "";
+  document.getElementById("nvidia-key").value = "";
+  alert("✅ API Keys 已清除");
+}
+
+// 顯示／隱藏密碼欄位
+function bindEyeToggle() {
+  document.querySelectorAll(".toggle-eye").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      input.type = input.type === "password" ? "text" : "password";
+      btn.textContent = input.type === "password" ? "👁" : "🙈";
+    });
+  });
 }
 
 async function testEndpoint() {
@@ -188,10 +221,12 @@ async function removeSite(id, label) {
 
 document.getElementById("save").addEventListener("click", saveEndpoint);
 document.getElementById("test").addEventListener("click", testEndpoint);
+document.getElementById("clear-keys").addEventListener("click", clearKeys);
 document.getElementById("add-site").addEventListener("click", addSite);
 document.getElementById("new-site").addEventListener("keydown", (e) => {
   if (e.key === "Enter") addSite();
 });
 
+bindEyeToggle();
 loadEndpoint();
 loadSites();

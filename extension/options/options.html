@@ -33,6 +33,14 @@
       background: #e6f4ea; color: #137333;
     }
     .engine-tag.cloud { background: #fef7e0; color: #b06000; }
+
+    /* API Key row */
+    .key-row { display: flex; gap: 6px; align-items: stretch; }
+    .key-row input { flex: 1; }
+    .key-row .toggle-eye { flex: 0 0 auto; padding: 8px 12px; font-size: 14px; }
+    .hint a { color: #1a73e8; text-decoration: none; }
+    .hint a:hover { text-decoration: underline; }
+    .hint code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
     button {
       padding: 8px 16px; background: #1a73e8; color: #fff;
       border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
@@ -99,9 +107,36 @@
     <p class="hint">預設為本機 FastAPI 中繼站。連接 Colab 時改成 ngrok 網址即可。</p>
   </div>
 
+  <!-- ============ 雲端引擎 API Keys ============ -->
+  <h2>🔑 雲端引擎 API Keys（選用）</h2>
+  <p class="hint">
+    僅在使用 <b>Gemini</b> 或 <b>NVIDIA</b> 引擎時需要填寫。Keys 儲存於
+    <code>chrome.storage.local</code>（<b>不會</b>同步到 Google 帳號 / 跨裝置），
+    透過 HTTP header 傳給本機 FastAPI，<b>不會</b>送到本機以外的地方（除了該 API 自身）。
+  </p>
+
   <div class="field">
-    <button id="save">儲存</button>
-    <button id="test" class="secondary">測試連線</button>
+    <label for="gemini-key">Gemini API Key</label>
+    <div class="key-row">
+      <input type="password" id="gemini-key" placeholder="AIza..." autocomplete="off" />
+      <button type="button" class="secondary toggle-eye" data-target="gemini-key" title="顯示／隱藏">👁</button>
+    </div>
+    <p class="hint">取得：<a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+  </div>
+
+  <div class="field">
+    <label for="nvidia-key">NVIDIA NIM API Key</label>
+    <div class="key-row">
+      <input type="password" id="nvidia-key" placeholder="nvapi-..." autocomplete="off" />
+      <button type="button" class="secondary toggle-eye" data-target="nvidia-key" title="顯示／隱藏">👁</button>
+    </div>
+    <p class="hint">取得：<a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a></p>
+  </div>
+
+  <div class="field">
+    <button id="save">儲存所有設定</button>
+    <button id="test" class="secondary">測試後端連線</button>
+    <button id="clear-keys" class="danger" type="button">清除 API Keys</button>
     <span id="saved-msg" class="saved" hidden>已儲存 ✓</span>
   </div>
 

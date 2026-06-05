@@ -164,10 +164,14 @@ async def call_openai(text: str) -> dict:
     return normalize_result(_extract_json(raw))
 
 
-async def call_gemini(text: str) -> dict:
-    """呼叫 Google Gemini（雲端 baseline，免費額度大、Gemini Flash 反應快）。"""
-    if not GEMINI_API_KEY:
-        raise RuntimeError("未設定 GEMINI_API_KEY 環境變數")
+async def call_gemini(text: str, api_key: str | None = None) -> dict:
+    """呼叫 Google Gemini（雲端 baseline，免費額度大、Gemini Flash 反應快）。
+
+    api_key 優先序：函式參數 (來自 HTTP header) > 環境變數 GEMINI_API_KEY
+    """
+    key = api_key or GEMINI_API_KEY
+    if not key:
+        raise RuntimeError("未設定 Gemini API Key（請在 Options 頁填入或設定 GEMINI_API_KEY 環境變數）")
     url = f"{GEMINI_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
@@ -179,7 +183,7 @@ async def call_gemini(text: str) -> dict:
             "responseMimeType": "application/json",  # Gemini 原生 JSON mode
         },
     }
-    headers = {"x-goog-api-key": GEMINI_API_KEY}
+    headers = {"x-goog-api-key": key}
     async with httpx.AsyncClient(timeout=60.0) as client:
         r = await client.post(url, json=payload, headers=headers)
         if r.status_code >= 400:
@@ -193,11 +197,15 @@ async def call_gemini(text: str) -> dict:
     return normalize_result(_extract_json(raw))
 
 
-async def call_nvidia(text: str) -> dict:
+async def call_nvidia(text: str, api_key: str | None = None) -> dict:
     """呼叫 NVIDIA NIM（雲端 baseline，提供 Llama / Qwen 等 OSS 模型）。
-    NIM 介面與 OpenAI 相容，僅 endpoint 與 model 名稱不同。"""
-    if not NVIDIA_API_KEY:
-        raise RuntimeError("未設定 NVIDIA_API_KEY 環境變數")
+    NIM 介面與 OpenAI 相容，僅 endpoint 與 model 名稱不同。
+
+    api_key 優先序：函式參數 (來自 HTTP header) > 環境變數 NVIDIA_API_KEY
+    """
+    key = api_key or NVIDIA_API_KEY
+    if not key:
+        raise RuntimeError("未設定 NVIDIA API Key（請在 Options 頁填入或設定 NVIDIA_API_KEY 環境變數）")
     url = f"{NVIDIA_BASE}/chat/completions"
     payload = {
         "model": NVIDIA_MODEL,
@@ -209,10 +217,11 @@ async def call_nvidia(text: str) -> dict:
         # NVIDIA NIM 部分模型支援 JSON mode，不支援就退回正則抓 JSON
         "response_format": {"type": "json_object"},
     }
-    headers = {"Authorization": f"Bearer {NVIDIA_API_KEY}"}
+    headers = {"Authorization": f"Bearer {key}"}
     async with httpx.AsyncClient(timeout=60.0) as client:
         r = await client.post(url, json=payload, headers=headers)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            raise RuntimeError(f"NVIDIA API {r.status_code}: {r.text[:500]}")
         raw = r.json()["choices"][0]["message"]["content"]
     return normalize_result(_extract_json(raw))
 
@@ -227,18 +236,27 @@ ENGINE_LABELS = {
 }
 
 
-async def analyze_with_engine(text: str, engine: str | None = None) -> tuple[dict, str]:
+async def analyze_with_engine(
+    text: str,
+    engine: str | None = None,
+    key_overrides: dict | None = None,
+) -> tuple[dict, str]:
     """
     回傳 (normalized_result, engine_label)
     呼叫端負責補上 latency_ms / cache_hit。
+
+    key_overrides: 由 HTTP header 傳進來的 API key 覆寫，
+                   結構如 {"gemini": "...", "nvidia": "..."}
     """
     engine = (engine or DEFAULT_ENGINE).lower()
+    overrides = key_overrides or {}
+
     if engine == "ollama":
         return await call_ollama(text), f"ollama:{OLLAMA_MODEL}"
     if engine == "openai":
         return await call_openai(text), f"openai:{OPENAI_MODEL}"
     if engine == "gemini":
-        return await call_gemini(text), f"gemini:{GEMINI_MODEL}"
+        return await call_gemini(text, api_key=overrides.get("gemini")), f"gemini:{GEMINI_MODEL}"
     if engine == "nvidia":
-        return await call_nvidia(text), f"nvidia:{NVIDIA_MODEL}"
+        return await call_nvidia(text, api_key=overrides.get("nvidia")), f"nvidia:{NVIDIA_MODEL}"
     raise ValueError(f"未知的引擎: {engine}")
