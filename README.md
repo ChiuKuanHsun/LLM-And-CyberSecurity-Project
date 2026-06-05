@@ -295,9 +295,6 @@ Project/
 - **微調工具**：[Unsloth](https://github.com/unslothai/unsloth) + PEFT (LoRA)
 - **雲端 baseline**：Google Gemini API / NVIDIA NIM API
 
-### 報告與文件
-- **LaTeX** (XeLaTeX) + BibTeX
-- **Markdown** for 個人報告與 README
 
 ---
 
@@ -312,7 +309,6 @@ Project/
 | Ollama 本地（純 CPU, i7） | 5 - 6 s | 無 GPU 對照 |
 | Ollama Colab T4 + cloudflared | 5 - 6 s | 含跨太平洋網路 |
 
-更詳細的延遲構成與架構決策矩陣見 [期末報告 §6](report/final/main.tex)。
 
 
 ---
@@ -327,7 +323,6 @@ Project/
 3. 開啟正常信件，綠色 ✓ badge
 4. 切換 LLM 引擎（Ollama → Gemini → NVIDIA），對比延遲與判斷
 5. 新增 Outlook 到自訂掃描網站
-6. 演示 Colab 反向代理部署
 
 ---
 
