@@ -327,17 +327,6 @@ Project/
 
 更詳細的延遲構成與架構決策矩陣見 [期末報告 §6](report/final/main.tex)。
 
----
-
-## 👥 團隊與分工
-
-**第 59 組** — _LLM Applications in Cybersecurity, Spring 2026_
-
-| 成員 | 學號 | 分工 |
-| --- | --- | --- |
-| 邱冠勳 | S114062328 | 🖥 **前端與系統整合 (Frontend & Integration)**<br/>Chrome Extension、FastAPI 中繼站、引擎抽象層、UX 設計 |
-| 盧彥宇 | S114062317 | 📊 **資料工程與模型微調 (Data & Fine-tuning)**<br/>台灣在地化資料集、LoRA 微調、GGUF 量化、Modelfile |
-| 吳花瑜 | S114065534 | 🛡 **提示詞工程與資安評估 (Prompt & Evaluation)**<br/>System prompt 設計、威脅模型、Held-out test set 評估、F1 量化 |
 
 ---
 
