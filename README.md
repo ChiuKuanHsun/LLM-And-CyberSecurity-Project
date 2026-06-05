@@ -90,10 +90,6 @@
               └────────────── 共用 SYSTEM_PROMPT ──────────────┘
 ```
 
-詳細的引擎抽象層、降級 fallback、輸出收斂設計見 [`report/final/main.tex`](report/final/main.tex) §3。
-
----
-
 ## 🚀 快速開始 (3 步)
 
 ### Step 1 — Clone 並建立 venv
