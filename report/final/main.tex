@@ -1,0 +1,559 @@
+% ============================================================
+%  LLM 意圖導向防釣魚 Chrome 擴充功能 — 期末整合報告
+%  Course: LLM Applications in Cybersecurity (Spring 2026)
+%  Team 59:  A 邱冠勳 / B 盧彥宇 / C 吳花瑜
+%
+%  共編規範：
+%   ★ 每個 \section 開頭都註明主責成員，編輯時 ONLY 動該段
+%   ★ [TODO: B] / [TODO: C] 標記處由對應組員填入實際數據
+%   ★ 不要動 preamble 與引用 (\cite)，有需要新增請通知 A
+% ============================================================
+
+\documentclass[11pt, a4paper]{article}
+
+% ---------- 字型與中文 ----------
+\usepackage{xeCJK}
+% Overleaf 內建 Noto CJK，這三行不用改
+\setCJKmainfont{Noto Serif CJK TC}
+\setCJKsansfont{Noto Sans CJK TC}
+\setCJKmonofont{Noto Sans Mono CJK TC}
+
+% ---------- 排版 ----------
+\usepackage[a4paper, margin=2.3cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{parskip}
+
+% ---------- 圖表 / 程式碼 ----------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf}
+
+% ---------- 連結 ----------
+\usepackage[colorlinks=true, linkcolor=black, citecolor=blue!50!black,
+            urlcolor=blue!60!black]{hyperref}
+\usepackage{enumitem}
+
+% ---------- listings 程式碼樣式 ----------
+\definecolor{codebg}{rgb}{0.97,0.97,0.97}
+\definecolor{codecmt}{rgb}{0.40,0.55,0.40}
+\definecolor{codekw}{rgb}{0.10,0.20,0.55}
+\definecolor{codestr}{rgb}{0.55,0.20,0.20}
+\lstdefinestyle{codestyle}{
+  backgroundcolor=\color{codebg},
+  commentstyle=\color{codecmt}\itshape,
+  keywordstyle=\color{codekw}\bfseries,
+  stringstyle=\color{codestr},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  showspaces=false,
+  showstringspaces=false,
+  tabsize=2,
+  frame=single,
+  framerule=0.3pt,
+  rulecolor=\color{black!30},
+}
+\lstset{style=codestyle}
+
+% ---------- 標題 ----------
+\title{
+  \vspace{-1.5cm}
+  \textbf{\LARGE LLM 意圖導向防釣魚 Chrome 擴充功能} \\[4pt]
+  \textbf{\large Intent-Based Phishing Detector} \\[6pt]
+  \normalsize 期末整合報告 \textit{(Week 16 Final Integrated Report)}
+}
+\author{
+  \begin{tabular}{c}
+    邱冠勳 (S114062328) — 前端與系統整合 (Frontend \& Integration) \\
+    盧彥宇 (S114062317) — 資料工程與模型微調 (Data \& Fine-tuning) \\
+    吳花瑜 (S114065534) — 提示詞工程與資安評估 (Prompt \& Evaluation) \\[4pt]
+    \small 第 59 組 \\
+    \small \textit{LLM Applications in Cybersecurity — Proof of Concept Development}
+  \end{tabular}
+}
+\date{2026 年 6 月}
+
+\begin{document}
+\maketitle
+\vspace{-0.7cm}
+
+% =================================================================
+% ABSTRACT — 三人共同維護
+% =================================================================
+\begin{abstract}
+\noindent
+傳統反釣魚機制以網域黑名單與規則式關鍵字為主，難以應對近年「武器化文本 (weaponized text)」型態的社交工程攻擊——攻擊者使用流暢的自然語言冒充權威、製造急迫感、誘騙財務行為，卻不一定包含可疑網址。本研究實作一個基於 LLM 意圖分析 (Intent Analysis) 的 Chrome 擴充功能，於使用者瀏覽 Webmail 與社群網站時即時偵測訊息背後的攻擊意圖。系統採三層架構：(1) Manifest V3 Content Script 擷取 DOM 文字；(2) FastAPI 中繼站做引擎抽象、快取、降級 fallback；(3) 後端可在四個 LLM 引擎間熱插拔——本地以 LoRA 微調的 Qwen2.5-7B（透過 Ollama）、雲端 Gemini 3.5 Flash、雲端 NVIDIA NIM (Llama-3.1-8B)、以及離線 mock 降級。我們以 [TODO: C] 筆台灣在地化釣魚樣本評估系統表現，本地微調模型在繁中釣魚分類任務上達 F1-Score [TODO: C]，相較基礎模型提升 [TODO: C]，並以四引擎決策矩陣論述「延遲、隱私、可用性、成本」四軸權衡。本系統呼應課程強調的「\textit{從規則式特徵偵測轉向動態行為／意圖理解}」之典範轉移。
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% =================================================================
+% \section{緒論} — A 主筆，三人共同潤稿
+% =================================================================
+\section{緒論 (Introduction)}
+
+\subsection{背景與動機}
+近年釣魚攻擊已從早期單純的「惡意連結」演化為高度社交工程化的「武器化文本」\cite{apruzzese2022}。攻擊者可能不附任何可疑連結，僅以「您的健保卡將於 24 小時內失效」、「中華郵政包裹未領取」、「LINE Pay 中獎」等敘事，誘騙使用者主動回撥電話、開啟惡意附件或填寫表單。傳統依賴 URL 黑名單與規則式關鍵字過濾的反釣魚機制\cite{khonji2013}，對此類**沒有可疑網址**的「純文本社交工程」幾乎失去防禦力。
+
+呼應課程 Week 12 投影片所強調的典範轉移：
+
+\begin{quote}
+\textit{We shifted from rule-based signature detection to \textbf{dynamic behavioral / intent understanding}.}
+\end{quote}
+
+本專案以 LLM 對自然語言的深層語意理解能力，建構一個「\textbf{意圖導向 (Intent-Based)}」的釣魚偵測系統，將焦點從「訊息含什麼字」改為「訊息背後想讓使用者做什麼」。
+
+\subsection{研究問題}
+\begin{enumerate}[leftmargin=2em]
+  \item 如何在 Chrome 擴充功能環境下，以最小特權與最低延遲擷取目標網頁的可疑文本？
+  \item 如何以 LLM 即時分類社交工程意圖，並以結構化輸出餵入前端 UI？
+  \item 如何讓 LLM 輸出在生產環境中穩定可信，不因模型抽風而崩潰？
+  \item 如何在「資料隱私」與「推理延遲」之間提供使用者顯式選擇權？
+  \item 微調後的 7B 開源模型能否在繁中釣魚分類任務上達到雲端商用 LLM 級別的準確度？
+\end{enumerate}
+
+\subsection{研究貢獻}
+本系統的主要貢獻為：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{四引擎熱插拔架構}：本地 LoRA 微調 / Gemini / NVIDIA NIM / Mock fallback 四條路徑共用同一 Prompt template，可在執行期由使用者切換，提供完整的「隱私 vs 延遲」權衡空間
+  \item \textbf{Train/Serve 對齊機制}：建立三層輸入規格 \texttt{INPUT\_SPEC} 凍結 L1 (API) / L2 (LLM Prompt) / L3 (訓練資料) 介面契約，避免 ML 系統最常見的 train/serve skew
+  \item \textbf{台灣在地化釣魚資料集}：[TODO: B] 筆繁中標註樣本，涵蓋蝦皮、健保署、中華郵政、LINE Pay 等本土詐騙場景
+  \item \textbf{LLM 輸出韌性設計}：透過 JSON mode、輸出收斂、降級 fallback、雙層快取，將「不可靠 LLM」收束為「可生產化元件」
+\end{itemize}
+
+\subsection{報告結構}
+\S\ref{sec:arch} 描述整體系統架構；\S\ref{sec:impl} 依三人分工說明實作細節；\S\ref{sec:consistency} 討論跨模組對齊；\S\ref{sec:eval} 為資安量化評估；\S\ref{sec:engineering} 為延遲與架構決策；\S\ref{sec:limitations} 誠實討論限制；\S\ref{sec:conclusion} 結論。
+
+% =================================================================
+% \section{系統架構} — A 主筆
+% =================================================================
+\section{系統架構 (System Architecture)}\label{sec:arch}
+
+\subsection{整體三層設計}
+系統採「\textbf{瀏覽器擴充功能 — 中繼後端 — LLM 引擎}」三層架構（見圖 \ref{fig:arch}）。此設計刻意避免讓 Content Script 直接呼叫 LLM API，理由有三：(1) 商用 API Key 不應暴露於用戶端反編譯；(2) 多引擎之間需要中央切換邏輯；(3) 快取、降級、可觀測性集中於後端最易維護。
+
+\begin{figure}[h]
+  \centering
+  % [TODO: A] 用 draw.io 畫好後存 figs/architecture.pdf
+  \fbox{\parbox{0.85\textwidth}{
+    \centering \vspace{1em}
+    \textit{[圖待補] 整體架構圖 — Extension → FastAPI → 四引擎熱插拔} \\
+    \footnotesize 請以 draw.io / Excalidraw 重畫並輸出為 figs/architecture.pdf
+    \vspace{1em}
+  }}
+  \caption{系統三層架構與資料流。Content Script 擷取 DOM 文字，經 Service Worker 轉送至本機 FastAPI 中繼站；中繼站依使用者設定路由至四個引擎之一。}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{資料流}
+單次「掃描 — 分析 — 渲染」迴圈的完整資料流：
+
+\begin{enumerate}[leftmargin=2em]
+  \item Content Script 在 \texttt{document\_idle} 後對目標元素掃描，套用站點化 CSS Selector（已知網站）或通用 fallback selector（未知網站）擷取文本。
+  \item 前端粗篩（\S\ref{sec:prefilter}）過濾掉 < 20 字、無中文、隱形元素、選單列等明顯不需分析的內容。
+  \item 文本送 \texttt{chrome.runtime.sendMessage} 給 Service Worker。Service Worker 讀取 \texttt{chrome.storage.sync} 內的引擎設定，POST 至本機 FastAPI \texttt{/analyze}。
+  \item FastAPI 以 \texttt{(engine, text)} 為快取 key 查詢，命中則直接回傳；未命中則呼叫對應引擎的 \texttt{call\_*()} 函式。
+  \item 引擎呼叫失敗時自動降級為 mock keyword 分類器並標註 \texttt{engine\_label}。
+  \item 輸出經 \texttt{normalize\_result()} 強制收斂為合法 \texttt{AnalyzeResponse} 後回傳前端，Content Script 替換 loading 骨架為對應視覺重量的 Overlay。
+\end{enumerate}
+
+% =================================================================
+% \section{實作細節} — 依分工分小節
+% =================================================================
+\section{實作細節 (Implementation)}\label{sec:impl}
+
+% --------------------------------------------------------------
+\subsection{前端：Chrome Extension (Manifest V3)} \label{sec:frontend}
+\textit{主責：A (邱冠勳)}
+
+\subsubsection{Manifest V3 環境與最小特權}
+Chrome 自 2024 年起全面淘汰 Manifest V2，本專案以 MV3 從零建置。Manifest 採嚴格的最小特權原則：
+
+\begin{lstlisting}[language=java, caption={\texttt{manifest.json} 權限設計}]
+{
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8080/*",
+    "https://mail.google.com/*",
+    "https://*.facebook.com/*",
+    "https://*.line.me/*"
+  ],
+  "optional_host_permissions": ["https://*/*", "http://*/*"]
+}
+\end{lstlisting}
+
+刻意不使用 \texttt{<all\_urls>}，並將「使用者可能未來新增的網域」放入 \texttt{optional\_host\_permissions}，於執行期透過 \texttt{chrome.permissions.request()} 觸發瀏覽器原生授權彈窗，符合 \textit{Principle of Least Privilege} 與 \textit{Just-in-Time Authorization}\cite{nielsen1994}。
+
+\subsubsection{動態權限管理：使用者自訂掃描網站}\label{sec:dynperm}
+傳統作法將所有支援站台寫死於 manifest，每次擴充支援新 webmail 都需重發版。本系統實作「使用者自訂掃描網站」UI：使用者於 Options 頁輸入網址後，背景透過 \texttt{chrome.scripting.\allowbreak registerContentScripts()} 動態註冊，並將清單持久化於 \texttt{chrome.storage.sync}，於 \texttt{onStartup} 對齊以防瀏覽器升級導致動態註冊掉失。
+
+\subsubsection{DOM 文本擷取演算法}
+直接抓 \texttt{document.body.innerText} 在 Gmail 等 SPA 上會超過 10,000 字並含大量雜訊。我們採「站點化 Selector + 三層清洗」：
+
+\begin{enumerate}[leftmargin=2em]
+  \item 對已知站點 (Gmail / Facebook / LINE) 使用精準 selector，例如 Gmail 用 \texttt{div.a3s.aiL}
+  \item 對未知站點走通用 selector 串掃 (\texttt{article}, \texttt{main}, \texttt{[role='article']}, \texttt{[class*='message-body']}\ldots)
+  \item 萃取時 clone 節點後移除 \texttt{<script>}、\texttt{<style>}、\texttt{<img>}、以及自身注入的 \texttt{.pd-overlay}（避免外層容器二次掃描時把警告文字也算進 hash）
+  \item 合併空白後截斷至 5,000 字（後端再以 \texttt{max\_length=20000} 兜底）
+\end{enumerate}
+
+\subsubsection{三層去重與 In-flight 防分身}
+為避免 MutationObserver 因前端注入 overlay 而觸發無限重掃，採三層防護：(1) 同次掃描內 \texttt{seenInThisScan} Set；(2) 跨次掃描的 \texttt{el.dataset.pdMarked}；(3) 跨次掃描的 \texttt{analyzedResults} Map 與 \texttt{inFlightHashes} Set，後者解決「await 後端期間 observer 重觸發造成 loading 分身」之關鍵 bug。
+
+\subsubsection{前端粗篩：減少無謂的後端呼叫}\label{sec:prefilter}
+單次 LLM 推理 2-6 秒，若每個 DOM 節點都送後端浪費極大。Content Script 在 \texttt{sendMessage} 前先做四道過濾：(a) 文本 \textless{} 20 字；(b) 無中文字元；(c) 元素 0$\times$0 或 display:none；(d) 連結文字密度 \textgreater{} 70\%。這呼應資安設計的 \textit{Defense in Depth} 原則——前後端各承擔部分判斷，不全押在 LLM。
+
+\subsubsection{警告 UI 與「Visibility of System Status」}
+依分析結果採差異化視覺重量（表 \ref{tab:ui}）。即使結果為「安全」也注入綠色 badge，避免使用者懷疑系統是否真的執行過——這是 Nielsen 十大易用性原則第一條的具體實踐\cite{nielsen1994}。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{l l c X}
+    \toprule
+    \textbf{結果} & \textbf{視覺} & \textbf{高度} & \textbf{資訊} \\
+    \midrule
+    分析中    & 灰色單行 + spinner & 低 & 「⟳ 意圖分析中…」 \\
+    High / Medium & 紅／橘 banner + 展開區 & 高 & 風險、解釋、攻擊意圖、引擎、延遲 \\
+    Low / 安全 & 綠色精簡 banner & 低 & ✓ 標記、引擎、延遲 \\
+    \bottomrule
+  \end{tabularx}
+  \caption{依分析結果差異化的 Overlay 視覺重量。}
+  \label{tab:ui}
+\end{table}
+
+% --------------------------------------------------------------
+\subsection{後端：FastAPI 多引擎中繼站} \label{sec:backend}
+\textit{主責：A (邱冠勳)}
+
+\subsubsection{四引擎抽象層}
+LLM 呼叫抽象成獨立模組 \texttt{llm\_engine.py}，內含四個 \texttt{call\_*()} 函式分別對應四引擎，由 \texttt{analyze\_with\_engine(text, engine)} 路由：
+
+\begin{lstlisting}[language=Python, caption={多引擎路由}]
+async def analyze_with_engine(text, engine=None):
+    engine = (engine or DEFAULT_ENGINE).lower()
+    if engine == "ollama":
+        return await call_ollama(text), f"ollama:{OLLAMA_MODEL}"
+    if engine == "gemini":
+        return await call_gemini(text), f"gemini:{GEMINI_MODEL}"
+    if engine == "nvidia":
+        return await call_nvidia(text), f"nvidia:{NVIDIA_MODEL}"
+    raise ValueError(f"未知的引擎: {engine}")
+\end{lstlisting}
+
+四引擎共用同一 \texttt{SYSTEM\_PROMPT} 與 \texttt{build\_user\_message()}，確保任何 prompt 變動同時影響所有引擎，符合控制變因的工程實踐。
+
+\subsubsection{LLM 輸出收斂：兩道防線}
+即使開啟 JSON mode，LLM 仍可能包 markdown code fence 或夾雜說明文字。\texttt{\_extract\_json()} 第一道剝除外框、第二道用正則抓第一個平衡的 \texttt{\{...\}}；\texttt{normalize\_result()} 強制檢查 \texttt{risk\_level} 與 \texttt{detected\_intents} 是否在白名單內、\texttt{explanation} 截斷 80 字。這層保護確保「無論 LLM 如何亂輸出，前端拿到的永遠是合法的 \texttt{AnalyzeResponse}」。
+
+\subsubsection{降級 Fallback (Graceful Degradation)}
+LLM 服務可能因網路、quota、本機資源等失效。\texttt{/analyze} 包覆 try/except，失敗時自動退回 mock keyword 分類，並於回應的 \texttt{engine} 欄位標註 \texttt{mock-fallback (原因: ConnectError)} 等真實錯誤類型；fallback 結果\textbf{不寫入快取}，確保下次仍會嘗試真實引擎。
+
+\subsubsection{快取設計與引擎污染防護}
+快取 key 為 \texttt{SHA-256(engine\,||\,text)}，引擎名納入 key 是為了避免「切換到不同引擎時拿到舊引擎的結果」之污染問題。同時搭配前端的 \texttt{analyzedResults} Map（hash → 結果），形成「前端 Map + 後端 SHA-256」雙層快取，命中時端到端延遲 \textless{} 5\,ms。
+
+% --------------------------------------------------------------
+\subsection{資料工程與 LoRA 微調} \label{sec:bfinetune}
+\textit{主責：B (盧彥宇)}
+
+% [TODO: B] 以下為架構與要點，請組員 B 補充實際數據、loss 曲線、超參數表
+\subsubsection{資料集建立}
+本資料集針對台灣在地化詐騙場景設計，類別分布如表 \ref{tab:dataset}（[TODO: B] 補實際比例）。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{類別} & \textbf{樣本數} & \textbf{來源} \\
+    \midrule
+    台灣在地化釣魚 & [TODO: B] & 165 反詐專線、警政署公告、自製改寫 \\
+    英文釣魚樣本   & [TODO: B] & PhishTank、Nazario Corpus 翻譯改寫 \\
+    正常信件       & [TODO: B] & Enron 正常子集、新聞稿、會議通知 \\
+    \midrule
+    \textbf{總計}  & \textbf{[TODO: B]} & — \\
+    \bottomrule
+  \end{tabular}
+  \caption{資料集組成。}
+  \label{tab:dataset}
+\end{table}
+
+資料以 JSONL 格式儲存，每筆為完整 chat conversation，\texttt{messages} 含 system / user / assistant 三 role；其中 \texttt{user} 內容以 \texttt{<text>...</text>} 標籤包裹（同時為 prompt injection 之輕度緩解），\texttt{assistant} 內容即為符合 \texttt{AnalyzeResponse} schema 的 JSON 字串。此格式與後端推理時注入的 prompt 完全一致，避免 train/serve skew（詳見 \S\ref{sec:consistency}）。
+
+\subsubsection{微調流程}
+基底模型選用 \textbf{Qwen2.5-7B-Instruct}，採 Unsloth 框架\cite{unsloth2024} 配合 4-bit 量化 (bitsandbytes) 與 LoRA\cite{hu2021lora} (PEFT) 於 Google Colab T4 (16GB VRAM) 訓練。關鍵超參數如表 \ref{tab:hyper}（[TODO: B] 補實值）。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{超參數} & \textbf{值} \\
+    \midrule
+    LoRA rank ($r$)              & [TODO: B] \\
+    LoRA $\alpha$                & [TODO: B] \\
+    Learning rate                & [TODO: B] \\
+    Batch size (effective)       & [TODO: B] \\
+    Epochs                       & [TODO: B] \\
+    Max sequence length          & [TODO: B] \\
+    Quantization                 & 4-bit (NF4) \\
+    \bottomrule
+  \end{tabular}
+  \caption{LoRA 微調超參數。}
+  \label{tab:hyper}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  % [TODO: B] 放 Unsloth 訓練 loss 曲線截圖：figs/loss_curve.png
+  \fbox{\parbox{0.6\textwidth}{
+    \centering \vspace{1em}
+    \textit{[圖待補] 訓練 Loss 曲線 (Unsloth)} \\
+    \footnotesize 由 B 提供：figs/loss\_curve.png
+    \vspace{1em}
+  }}
+  \caption{LoRA 微調訓練 loss 曲線。}
+\end{figure}
+
+\subsubsection{量化與 Ollama 整合}
+微調完成後將 LoRA 權重合併回基底模型，使用 \texttt{llama.cpp} 工具鏈轉換為 \textbf{GGUF Q4\_K\_M} 格式（檔案大小約 4.7\,GB），再以 Ollama 建立模型：
+
+\begin{lstlisting}[language=bash]
+ollama create phishing-detector -f Modelfile
+\end{lstlisting}
+
+% --------------------------------------------------------------
+\subsection{提示詞工程} \label{sec:cprompt}
+\textit{主責：C (吳花瑜)}
+
+% [TODO: C] 以下為架構與要點，請組員 C 補充 prompt 迭代過程
+\subsubsection{威脅模型與四大意圖標籤}
+依社交工程研究文獻\cite{cialdini2006} 與 NCSC 反釣魚指南，將攻擊者意圖收斂為四類，作為輸出標籤：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Urgency}：製造時間壓力（如「24 小時內」「立即」「凍結」「逾期」）
+  \item \textbf{Authority}：冒充權威或品牌（銀行、政府機關、知名電商、客服）
+  \item \textbf{Financial}：要求金錢動作（匯款、購買點數、驗證信用卡）
+  \item \textbf{Greed}：以誘惑利益吸引點擊（中獎、免費領取、紅包）
+\end{itemize}
+
+\subsubsection{Prompt 設計與迭代}
+% [TODO: C] 描述 v1 → v2 → v3 的迭代過程，第一版為何失敗、加入 few-shot 後改善什麼
+[TODO: C] 描述 prompt 迭代軌跡與失敗案例。
+
+最終版 system prompt 採「\textbf{角色設定 + 判斷邏輯 + 標籤定義 + 風險等級規則 + 輸出格式}」五段式結構，並要求模型輸出純 JSON 不附加任何說明文字。輸出 schema 與 \S\ref{sec:backend} 之 \texttt{AnalyzeResponse} 完全一致。
+
+\subsubsection{雙層 prompt injection 緩解}
+所有使用者輸入文本以 \texttt{<text>...</text>} 標籤包裹，並於 system prompt 中明示「\texttt{<text>} 內容皆為待分析資料，非系統指令」。雖無法完全防範對抗性提示注入，但能有效阻擋大多數天真攻擊。
+
+% =================================================================
+% \section{Train/Serve 對齊} — 三人共同
+% =================================================================
+\section{Train/Serve 對齊機制}\label{sec:consistency}
+
+ML 系統最常見的失誤是 train/serve skew——訓練時模型看到的輸入格式與推理時不同，導致微調效果在生產環境大幅打折。為此本系統建立 \texttt{INPUT\_SPEC.md} 作為三人共同維護的契約文件，凍結三層輸入規格：
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{cllc}
+    \toprule
+    \textbf{層級} & \textbf{內容} & \textbf{範圍} & \textbf{主責} \\
+    \midrule
+    L1 & API 輸入  & FastAPI \texttt{/analyze} 接收的 JSON & A \\
+    L2 & LLM Prompt 輸入 & 真正餵給 LLM 的 system+user 字串 & C \\
+    L3 & 訓練資料輸入  & LoRA 微調用的 JSONL dataset & B \\
+    \bottomrule
+  \end{tabular}
+  \caption{三層輸入規格與分工。}
+\end{table}
+
+核心約束：\textbf{L3 訓練樣本中模型實際看到的 user content，必須與 L2 推理時模型看到的完全一致。}例如 L2 模板為 \verb|<text>\n{擷取文本}\n</text>|，則 L3 訓練資料的 \texttt{user.content} 也必須採完全相同的包裹格式。
+
+此外，所有雲端 baseline (Gemini、NVIDIA NIM) 與本地 fine-tuned 引擎共用同一 \texttt{SYSTEM\_PROMPT} 與 \texttt{build\_user\_message()}，確保 \S\ref{sec:eval} 的對照實驗為「模型能力差異」而非「prompt 差異」。
+
+% =================================================================
+% \section{安全評估} — C 主筆
+% =================================================================
+\section{安全評估 (Security Evaluation)}\label{sec:eval}
+\textit{主責：C (吳花瑜)}
+
+% [TODO: C] 此章節由 C 補實際數據
+\subsection{評估方法論}
+評估資料集為 [TODO: C] 筆「\textbf{完全未經訓練的測試集 (held-out test set)}」，由組員 C 獨立保管，組員 B 於微調期間無法接觸，避免資料洩漏 (data leakage)。測試集組成見表 \ref{tab:testset}。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{類別} & \textbf{數量} \\
+    \midrule
+    台灣在地化釣魚 & [TODO: C] \\
+    英文釣魚       & [TODO: C] \\
+    正常信件       & [TODO: C] \\
+    \midrule
+    \textbf{總計}  & \textbf{[TODO: C]} \\
+    \bottomrule
+  \end{tabular}
+  \caption{Held-out test set 組成。}
+  \label{tab:testset}
+\end{table}
+
+\subsection{量化指標}
+我們使用 Precision、Recall、F1-Score、Accuracy 四項指標，並繪製混淆矩陣（圖 \ref{fig:cm}）。對\textbf{釣魚偵測}此一任務，Recall 比 Precision 更重要——漏報 (False Negative) 一封詐騙信代價遠高於誤報 (False Positive) 一封正常信。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{引擎} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Accuracy} \\
+    \midrule
+    Ollama Qwen2.5-7B (fine-tuned)        & [TODO: C] & [TODO: C] & [TODO: C] & [TODO: C] \\
+    Qwen2.5-7B (基底模型，無微調)         & [TODO: C] & [TODO: C] & [TODO: C] & [TODO: C] \\
+    Gemini 3.5 Flash                      & [TODO: C] & [TODO: C] & [TODO: C] & [TODO: C] \\
+    NVIDIA NIM (Llama-3.1-8B)             & [TODO: C] & [TODO: C] & [TODO: C] & [TODO: C] \\
+    Mock keyword (Week 14 baseline)        & [TODO: C] & [TODO: C] & [TODO: C] & [TODO: C] \\
+    \bottomrule
+  \end{tabular}
+  \caption{五引擎於 held-out test set 上的量化評估結果。}
+  \label{tab:metrics}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  % [TODO: C] 提供混淆矩陣圖：figs/confusion_matrix.png
+  \fbox{\parbox{0.6\textwidth}{
+    \centering \vspace{1em}
+    \textit{[圖待補] 微調模型混淆矩陣} \\
+    \footnotesize 由 C 提供：figs/confusion\_matrix.png
+    \vspace{1em}
+  }}
+  \caption{微調 Qwen2.5-7B 於台灣在地化釣魚測試集上的混淆矩陣。}
+  \label{fig:cm}
+\end{figure}
+
+\subsection{微調的實質效益}
+[TODO: C] 比較 fine-tuned vs base 模型：本地微調模型在繁中釣魚分類任務上達 F1-Score [TODO: C]，相較 Qwen2.5-7B 基底模型 [TODO: C] 提升 [TODO: C]\,個百分點。這驗證了「\textbf{資料集本地化 + 輕量級 LoRA 微調}」確實能讓 8B 級開源模型在特定領域逼近商用旗艦的能力。
+
+\subsection{誤判案例深度分析}
+[TODO: C] 挑 2-3 個 False Positive 與 False Negative 案例討論，例如：「廣告促銷信件可能被誤判為 Greed 釣魚」「使用台語拼音的詐騙訊息漏抓」。
+
+% =================================================================
+% \section{工程與架構考量} — A 主筆
+% =================================================================
+\section{工程與架構考量}\label{sec:engineering}
+
+\subsection{端到端延遲實測}
+本系統在五種部署組合下實測端到端延遲，數據見表 \ref{tab:latency}。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lcl}
+    \toprule
+    \textbf{部署組合} & \textbf{端到端延遲} & \textbf{備註} \\
+    \midrule
+    快取命中（任一引擎）              & \textless 5\,ms       & 雙層快取設計 \\
+    NVIDIA NIM (Llama-3.1-8B)         & $\sim$\,2.4\,s        & 商用推理服務最快 \\
+    Gemini 3.5 Flash                  & $\sim$\,4.8\,s        & Google Flash 系列 \\
+    本地 GPU Ollama (Qwen2.5-7B Q4\_K\_M) & [TODO: A 實測] & 本機 GPU \\
+    本地 CPU Ollama                    & 5.5--6.0\,s           & 無 GPU 對照 \\
+    Colab T4 Ollama + cloudflared      & 5--6\,s              & 含跨太平洋 tunnel overhead \\
+    \bottomrule
+  \end{tabular}
+  \caption{各部署組合的端到端延遲（5,000 字以內文本，多次測試取近似值）。}
+  \label{tab:latency}
+\end{table}
+
+延遲構成分析（以 Colab T4 路徑為例）：
+
+\begin{itemize}[leftmargin=2em]
+  \item Cloudflare tunnel（台灣 $\rightleftarrows$ Colab）：$\sim$\,2--3\,s
+  \item T4 推理：$\sim$\,3\,s
+  \begin{itemize}
+    \item Prompt eval ($\sim$\,500 token system prompt @ $\sim$\,500\,tok/s)：$\sim$\,1.0\,s
+    \item Generation ($\sim$\,50 token JSON output @ $\sim$\,35\,tok/s)：$\sim$\,1.5\,s
+  \end{itemize}
+\end{itemize}
+
+\subsection{四引擎決策矩陣}
+四引擎在「延遲、隱私、成本、可用性」四軸的取捨見表 \ref{tab:matrix}。
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{lcXcc}
+    \toprule
+    \textbf{引擎} & \textbf{延遲} & \textbf{資料外洩風險} & \textbf{月成本} & \textbf{可用性} \\
+    \midrule
+    Ollama 本機      & 2--6\,s & \textbf{零}（資料留本機） & \$0 & 100\% \\
+    Ollama + tunnel  & 5--6\,s & 中（HTTPS 出本機，URL 無認證） & \$0 & $\sim$70\% \\
+    Gemini 3.5 Flash & 4.8\,s  & 高（文本送 Google） & \$0 (免費層) & 99.9\% \\
+    NVIDIA NIM       & 2.4\,s  & 高（文本送 NVIDIA） & \$0 (免費額度) & 99.9\% \\
+    Mock fallback    & \textless 50\,ms & 零 & \$0 & 100\% \\
+    \bottomrule
+  \end{tabularx}
+  \caption{四引擎架構決策矩陣。}
+  \label{tab:matrix}
+\end{table}
+
+關鍵設計觀察：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{延遲與隱私呈反向關係}——這是資安系統設計中的「不可三全」現實
+  \item \textbf{降級策略讓可用性問題消失}——任一引擎中斷時自動退回 mock，使用者永遠不會看到全面失能
+  \item \textbf{使用者擁有最終決定權}——Options 頁的引擎切換把權衡明確攤給使用者，符合 \textit{Security by Design} 與 \textit{Informed Consent}
+\end{itemize}
+
+\subsection{資料隱私與架構演進的論述}
+本系統開發初期曾完全依賴雲端 API，但經威脅建模 (threat modeling) 後意識到將 Webmail 內容傳送至第三方違反零信任架構下的資料保護原則。我們因此將第三方 API 「降級」為 baseline 與初期開發工具，最終預設採用本地化微調模型——這對應課程強調的「\textit{Data Privacy as Architectural Constraint}」思維。
+
+% =================================================================
+% \section{架構限制} — 三人共同
+% =================================================================
+\section{架構限制與威脅 (Architectural Limitations)}\label{sec:limitations}
+
+我們誠實討論本 PoC 已知的限制：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{圖片化釣魚不可見}：若攻擊者將釣魚訊息嵌入圖片或 PDF，目前的 Content Script 只擷取文字 DOM 無法擷取。未來可整合 OCR 或多模態 LLM (如 Gemini Vision)。
+  \item \textbf{本地推理延遲偏高}：5--6 秒對使用者體驗有壓力。緩解方式：(a) 前端 loading 骨架（已實作）；(b) 壓縮 system prompt 至 $\sim$\,150 tokens；(c) 蒸餾為 1.5B 等級小模型；(d) 使用 A100/L4 等更新硬體。
+  \item \textbf{Cloudflare quick tunnel 無認證}：trycloudflare URL 任何人知道即可呼叫，僅適合 PoC。正式部署應使用具名 tunnel + Cloudflare Access。
+  \item \textbf{Gemini 免費層 RPM 限制}：10 RPM / 250 RPD 對被動掃描足夠，但無法做 burst 測試。
+  \item \textbf{Prompt injection 高階變體}：當前 \texttt{<text>} 包裹僅能擋天真攻擊；對抗性 prompt injection 仍需更深防護（如 input filter 或 prompt firewall）\cite{liu2024promptinjection}。
+  \item \textbf{LLM 幻覺與過度信任}：使用者可能因綠色 ✓ badge 誤信「絕對安全」，反而降低警覺。未來可在 UI 加上「✓ 不代表絕對安全，請仍保持戒心」提示。
+\end{enumerate}
+
+% =================================================================
+% \section{結論} — 三人共同
+% =================================================================
+\section{結論 (Conclusion)}\label{sec:conclusion}
+
+本研究實作了一個基於 LLM 意圖分析的 Chrome 擴充功能，呼應課程強調的「從規則式特徵偵測轉向動態行為／意圖理解」之典範轉移。我們的核心工程貢獻並非「呼叫到 LLM」本身——任何人都能 call API——而是\textbf{圍繞 LLM 不可靠性所建構的工程防護}：
+
+\begin{itemize}[leftmargin=2em]
+  \item 四引擎熱插拔架構，於同一 prompt template 下提供「隱私 vs 延遲」的完整光譜
+  \item 輸出收斂 + 降級 fallback + 雙層快取，將「不可靠 LLM」收束為「可生產化元件」
+  \item INPUT\_SPEC 三層契約避免 train/serve skew，是跨團隊 ML 系統的工程紀律
+  \item 前端粗篩、loading 骨架、差異化 overlay，是 LLM 高延遲下不可或缺的 UX 補償
+  \item 本地化資料集 + LoRA 微調，使 7B 開源模型在繁中釣魚分類上 [TODO: C] 達 F1 [TODO: C]
+\end{itemize}
+
+我們論證了「\textbf{LLM 不是被使用，而是被工程化}」——將語言模型從「不可控的黑盒」收束為「可在生產環境信賴的元件」，正是 LLM 資安應用的工程核心。
+
+% =================================================================
+% 參考文獻
+% =================================================================
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
