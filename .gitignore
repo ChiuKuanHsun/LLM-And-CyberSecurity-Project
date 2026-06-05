@@ -2,5 +2,4 @@
 backend/.venv
 backend/__pycache__
 Qwen2.5-7B-Instruct.Q4_K_M.gguf
-INPUT_SPEC.md
 report/final.zip
