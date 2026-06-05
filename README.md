@@ -272,16 +272,8 @@ Project/
 │   └── README.md
 │
 ├── colab/                       # Colab 雲端 GPU 部署
-│   └── README.md                #   • 5-cell notebook + cloudflared tunnel
-│
-└── report/                      # 報告
-    ├── Week14_組員A_個人報告.md  # Week 14 個人報告（MD）
-    ├── Week15_組員A_個人報告.md  # Week 15 個人報告（MD）
-    └── final/                   # Week 16 期末整合報告
-        ├── main.tex             #   • LaTeX 主檔
-        ├── references.bib       #   • 8 篇引用
-        ├── README.md            #   • Overleaf 共編說明
-        └── figs/
+    └── README.md                #   • 5-cell notebook + cloudflared tunnel
+
 ```
 
 ---
