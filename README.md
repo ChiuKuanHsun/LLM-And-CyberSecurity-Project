@@ -15,7 +15,6 @@
 | --- | --- |
 | 🎥 **操作演示影片** | [YouTube — TODO: 貼上連結](https://youtube.com/watch?v=TODO) |
 | 🤗 **微調模型 (GGUF)** | [BuddyLu/phishing-qwen-gguf on Hugging Face](https://huggingface.co/BuddyLu/phishing-qwen-gguf/tree/main) |
-| 📄 **期末整合報告 (LaTeX)** | [`report/final/main.tex`](report/final/main.tex) |
 | 📋 **三層輸入規格** | [`INPUT_SPEC.md`](INPUT_SPEC.md) |
 | ☁️ **Colab 雲端 GPU 部署指南** | [`colab/README.md`](colab/README.md) |
 
@@ -89,10 +88,6 @@
     └──────────────────┘ └──────────────────┘ └──────────────────┘
               └────────────── 共用 SYSTEM_PROMPT ──────────────┘
 ```
-
-詳細的引擎抽象層、降級 fallback、輸出收斂設計見 [`report/final/main.tex`](report/final/main.tex) §3。
-
----
 
 ## 🚀 快速開始 (3 步)
 
@@ -277,16 +272,8 @@ Project/
 │   └── README.md
 │
 ├── colab/                       # Colab 雲端 GPU 部署
-│   └── README.md                #   • 5-cell notebook + cloudflared tunnel
-│
-└── report/                      # 報告
-    ├── Week14_組員A_個人報告.md  # Week 14 個人報告（MD）
-    ├── Week15_組員A_個人報告.md  # Week 15 個人報告（MD）
-    └── final/                   # Week 16 期末整合報告
-        ├── main.tex             #   • LaTeX 主檔
-        ├── references.bib       #   • 8 篇引用
-        ├── README.md            #   • Overleaf 共編說明
-        └── figs/
+    └── README.md                #   • 5-cell notebook + cloudflared tunnel
+
 ```
 
 ---
@@ -308,9 +295,6 @@ Project/
 - **微調工具**：[Unsloth](https://github.com/unslothai/unsloth) + PEFT (LoRA)
 - **雲端 baseline**：Google Gemini API / NVIDIA NIM API
 
-### 報告與文件
-- **LaTeX** (XeLaTeX) + BibTeX
-- **Markdown** for 個人報告與 README
 
 ---
 
@@ -325,19 +309,7 @@ Project/
 | Ollama 本地（純 CPU, i7） | 5 - 6 s | 無 GPU 對照 |
 | Ollama Colab T4 + cloudflared | 5 - 6 s | 含跨太平洋網路 |
 
-更詳細的延遲構成與架構決策矩陣見 [期末報告 §6](report/final/main.tex)。
 
----
-
-## 👥 團隊與分工
-
-**第 59 組** — _LLM Applications in Cybersecurity, Spring 2026_
-
-| 成員 | 學號 | 分工 |
-| --- | --- | --- |
-| 邱冠勳 | S114062328 | 🖥 **前端與系統整合 (Frontend & Integration)**<br/>Chrome Extension、FastAPI 中繼站、引擎抽象層、UX 設計 |
-| 盧彥宇 | S114062317 | 📊 **資料工程與模型微調 (Data & Fine-tuning)**<br/>台灣在地化資料集、LoRA 微調、GGUF 量化、Modelfile |
-| 吳花瑜 | S114065534 | 🛡 **提示詞工程與資安評估 (Prompt & Evaluation)**<br/>System prompt 設計、威脅模型、Held-out test set 評估、F1 量化 |
 
 ---
 
@@ -351,7 +323,6 @@ Project/
 3. 開啟正常信件，綠色 ✓ badge
 4. 切換 LLM 引擎（Ollama → Gemini → NVIDIA），對比延遲與判斷
 5. 新增 Outlook 到自訂掃描網站
-6. 演示 Colab 反向代理部署
 
 ---
 
@@ -382,7 +353,7 @@ ollama pull hf.co/BuddyLu/phishing-qwen-gguf
 - **Google AI Studio / NVIDIA NIM** 提供免費 API 額度
 
 ### 授權
-本專案為大學課程期末作業，僅供學術用途。MIT License 詳見 [LICENSE](LICENSE)（若有）。
+本專案為大學課程期末作業，僅供學術用途。
 
 ### 相關研究
 本系統的設計呼應以下文獻與課程內容：

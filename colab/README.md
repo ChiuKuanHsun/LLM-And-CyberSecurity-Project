@@ -2,7 +2,7 @@
 
 ## 為什麼這樣做？
 
-本地 CPU 跑 Qwen2.5-7B Q4_K_M 每次推理約 5~6 秒。Colab Free 的 T4 GPU (16GB VRAM) 可壓到 **0.5~1 秒**，差距 6~12 倍。
+本地 CPU 跑 Qwen2.5-7B Q4_K_M 每次推理約 5~6 秒。Colab Free 的 T4 GPU (16GB VRAM) 可壓到 0.5~1 秒，差距 6~12 倍。
 
 ## 架構
 
@@ -21,7 +21,7 @@
 把以下兩個檔案上傳到 Google Drive 的 `MyDrive/llm_phishing/`：
 
 - `Qwen2.5-7B-Instruct.Q4_K_M.gguf`（4.6GB）
-- `Modelfile`（你專案根目錄那份）
+- `Modelfile`
 
 > 💡 上傳 .gguf 走 Google Drive 桌面同步 App 最穩，網頁直傳容易斷線
 
