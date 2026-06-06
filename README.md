@@ -13,7 +13,7 @@
 
 | 資源 | 連結 |
 | --- | --- |
-| 🎥 **操作演示影片** | [YouTube — TODO: 貼上連結](https://youtube.com/watch?v=TODO) |
+| 🎥 **操作演示影片** | [YouTube](https://youtu.be/q24wxKQsQKk) |
 | 🤗 **微調模型 (GGUF)** | [BuddyLu/phishing-qwen-gguf on Hugging Face](https://huggingface.co/BuddyLu/phishing-qwen-gguf/tree/main) |
 | 📋 **三層輸入規格** | [`INPUT_SPEC.md`](INPUT_SPEC.md) |
 | ☁️ **Colab 雲端 GPU 部署指南** | [`colab/README.md`](colab/README.md) |
@@ -315,7 +315,7 @@ Project/
 
 ## 🎬 操作演示
 
-📺 **YouTube 演示影片**：[https://youtube.com/watch?v=TODO](https://youtube.com/watch?v=TODO)
+📺 **YouTube 演示影片**：[https://youtu.be/q24wxKQsQKk](https://youtu.be/q24wxKQsQKk)
 
 影片內容：
 1. 載入擴充功能與啟動後端
